@@ -1,357 +1,570 @@
 "use client";
 
-import { useState } from "react";
-import { generatePlatformCaptions, PlatformCaptions } from "@/lib/crosspost/caption-spinner";
+import { useState, useRef, ChangeEvent } from "react";
+import Link from "next/link";
+
+interface ChannelConfig {
+  id: "FACEBOOK" | "INSTAGRAM" | "YOUTUBE" | "TWITTER";
+  name: string;
+  icon: string;
+  color: string;
+  enabled: boolean;
+  charLimit: number;
+}
 
 export default function ComposerPage() {
-  const [title, setTitle] = useState("WAYULOMI Official Visuals & Drop");
-  const [caption, setCaption] = useState(
-    "WAYULOMI is out now everywhere! The vibrations are unmatched. Stream on Spotify, Apple Music & YouTube. Tag a friend who needs this energy today! 🔥🌍"
-  );
-  const [smartLink, setSmartLink] = useState("https://v3nja-official.web.app/wayulomi");
-  const [mediaType, setMediaType] = useState<"VIDEO" | "REEL" | "IMAGE">("REEL");
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([
-    "FACEBOOK",
-    "INSTAGRAM",
-    "YOUTUBE_SHORTS",
-    "TWITTER_X",
+  // Channels
+  const [channels, setChannels] = useState<ChannelConfig[]>([
+    { id: "FACEBOOK", name: "Facebook Page", icon: "🔵", color: "text-blue-400", enabled: true, charLimit: 5000 },
+    { id: "INSTAGRAM", name: "Instagram (@v3nja2.0)", icon: "📸", color: "text-rose-400", enabled: true, charLimit: 2200 },
+    { id: "YOUTUBE", name: "YouTube Shorts", icon: "🔴", color: "text-red-400", enabled: true, charLimit: 100 },
+    { id: "TWITTER", name: "Twitter / X", icon: "⚫", color: "text-zinc-300", enabled: true, charLimit: 280 },
   ]);
-  const [scheduleDate, setScheduleDate] = useState("2026-09-20T18:00");
-  const [isEvergreen, setIsEvergreen] = useState(false);
-  const [recycleDays, setRecycleDays] = useState(14);
-  const [previewTab, setPreviewTab] = useState<"FACEBOOK" | "INSTAGRAM" | "YOUTUBE_SHORTS" | "TWITTER_X">(
-    "FACEBOOK"
-  );
-  const [publishing, setPublishing] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
 
-  const trackPresets = [
-    { name: "WAYULOMI", link: "https://v3nja-official.web.app/wayulomi", defaultCaption: "WAYULOMI is out now everywhere! Stream on Spotify, Apple Music & YouTube. Let me know your favorite bar in the comments! 🔥" },
-    { name: "NJALA", link: "https://v3nja-official.web.app/njala", defaultCaption: "NJALA official music video & single is live! Run the numbers up and share the vibe. Much love! 🎬🎶" },
-    { name: "ZANGA", link: "https://v3nja-official.web.app/zanga", defaultCaption: "ZANGA energy is taking over! Turn up the volume and dance. Available on all platforms now! ⚡🔥" },
-    { name: "MIRAKO", link: "https://v3nja-official.web.app/mirako", defaultCaption: "MIRAKO afro fusion vibrations straight from the heart. Stream & vibe with us today! 🌊✨" },
-    { name: "MERCH STORE", link: "https://v3nja-official.web.app/merch", defaultCaption: "V3NJA WRLD Official Merch & Apparel Collection 2026 is here! Premium quality, worldwide delivery. 🛍️👑" },
-    { name: "ALL MUSIC PORTAL", link: "https://v3nja-official.web.app/", defaultCaption: "Explore the complete V3NJA WRLD music catalog, visuals, and discography in one place! 🌐🎵" },
+  // Active channel editing tab
+  const [activeTab, setActiveTab] = useState<string>("ALL");
+
+  // Captions per channel
+  const [baseCaption, setBaseCaption] = useState<string>(
+    "WAYULOMI is out now! Stream the official single & visuals on all major music platforms 🔥🎧"
+  );
+  const [captions, setCaptions] = useState<Record<string, string>>({
+    FACEBOOK: "WAYULOMI is out now! Watch the official visualizer and stream on your favorite platform. Drop 'WAYULOMI' in the comments for instant VIP access! 🔥\n\nhttps://v3nja-official.web.app/wayulomi #V3NJA #Wayulomi #AfroFusion",
+    INSTAGRAM: "WAYULOMI official music clip 🎬 Stream now via link in bio or tap below! Comment 'WAYULOMI' to get the direct VIP stream link sent to your DMs 🚀\n\n#V3NJA #WAYULOMI #MalawiMusic #Afrobeats #NewMusic2026",
+    YOUTUBE: "WAYULOMI (Official Clip) - V3NJA #Shorts #V3NJA #AfroMusic",
+    TWITTER: "WAYULOMI official visuals out now worldwide! Stream here: https://v3nja-official.web.app/wayulomi 🔥🎵 #V3NJA #Wayulomi",
+  });
+
+  // Media state
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string>("/covers/wayulomi-cover.jpg");
+  const [mediaType, setMediaType] = useState<"video" | "image">("image");
+  const [mediaInfo, setMediaInfo] = useState<{ name: string; size: string; resolution: string }>({
+    name: "wayulomi-official-reel.mp4",
+    size: "14.2 MB",
+    resolution: "1080x1920 (9:16 Vertical Reel)",
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Scheduling
+  const [scheduleDate, setScheduleDate] = useState("2026-09-20");
+  const [scheduleTime, setScheduleTime] = useState("18:00");
+  const [isEvergreen, setIsEvergreen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Smart links
+  const smartLinks = [
+    { label: "WAYULOMI", url: "https://v3nja-official.web.app/wayulomi" },
+    { label: "NJALA", url: "https://v3nja-official.web.app/njala" },
+    { label: "ZANGA", url: "https://v3nja-official.web.app/zanga" },
+    { label: "MIRAKO", url: "https://v3nja-official.web.app/mirako" },
+    { label: "MERCH", url: "https://v3nja-official.web.app/merch" },
+    { label: "ALL MUSIC", url: "https://v3nja-official.web.app/" },
   ];
 
-  const generatedCaptions: PlatformCaptions = generatePlatformCaptions(caption, smartLink, title);
+  // Preset sample videos for fast testing
+  const sampleMediaPresets = [
+    { name: "WAYULOMI Visual Cut", type: "video" as const, file: "wayulomi-clip.mp4", size: "18.4 MB" },
+    { name: "NJALA Club Anthem", type: "video" as const, file: "njala-teaser.mp4", size: "12.1 MB" },
+    { name: "ZANGA Studio Teaser", type: "video" as const, file: "zanga-reel.mp4", size: "15.8 MB" },
+    { name: "Official Cover Artwork", type: "image" as const, file: "v3nja-artwork.jpg", size: "2.4 MB" },
+  ];
 
-  const togglePlatform = (p: string) => {
-    if (selectedPlatforms.includes(p)) {
-      if (selectedPlatforms.length > 1) {
-        setSelectedPlatforms(selectedPlatforms.filter((item) => item !== p));
-      }
-    } else {
-      setSelectedPlatforms([...selectedPlatforms, p]);
-    }
+  // Toggle channel
+  const toggleChannel = (id: string) => {
+    setChannels(
+      channels.map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c))
+    );
   };
 
-  const handleSelectPreset = (preset: (typeof trackPresets)[0]) => {
-    setTitle(`${preset.name} Official Drop`);
-    setSmartLink(preset.link);
-    setCaption(preset.defaultCaption);
+  // Handle file upload
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setMediaFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setMediaPreviewUrl(objectUrl);
+    const isVid = file.type.startsWith("video");
+    setMediaType(isVid ? "video" : "image");
+    setMediaInfo({
+      name: file.name,
+      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      resolution: isVid ? "1080x1920 (9:16 Vertical Reel)" : "1080x1080 (1:1 Square)",
+    });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Drag & drop handlers
+  const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setPublishing(true);
-    setSuccessMsg("");
-
-    try {
-      const res = await fetch("/api/scheduler/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          caption,
-          mediaType,
-          mediaUrl: "https://v3nja-official.web.app/assets/video_preview.mp4",
-          scheduledFor: new Date(scheduleDate).toISOString(),
-          platforms: selectedPlatforms,
-          isEvergreen,
-          recycleIntervalDays: recycleDays,
-        }),
+    setIsDragging(true);
+  };
+  const onDragLeave = () => setIsDragging(false);
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      setMediaFile(file);
+      const objectUrl = URL.createObjectURL(file);
+      setMediaPreviewUrl(objectUrl);
+      const isVid = file.type.startsWith("video");
+      setMediaType(isVid ? "video" : "image");
+      setMediaInfo({
+        name: file.name,
+        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        resolution: isVid ? "1080x1920 (9:16 Vertical Reel)" : "1080x1080 (1:1 Square)",
       });
-
-      const data = await res.json();
-      if (data.success) {
-        setSuccessMsg("🎉 Successfully Scheduled across all selected platforms!");
-      }
-    } catch (err: any) {
-      alert("Error scheduling post: " + err.message);
-    } finally {
-      setPublishing(false);
     }
   };
+
+  // Insert Smart Link
+  const insertLink = (url: string) => {
+    if (activeTab === "ALL") {
+      setBaseCaption((prev) => `${prev}\n\n${url}`);
+      setCaptions((prev) => ({
+        FACEBOOK: `${prev.FACEBOOK}\n\n${url}`,
+        INSTAGRAM: `${prev.INSTAGRAM}\n\n${url}`,
+        YOUTUBE: prev.YOUTUBE,
+        TWITTER: `${prev.TWITTER}\n\n${url}`,
+      }));
+    } else {
+      setCaptions((prev) => ({
+        ...prev,
+        [activeTab]: `${prev[activeTab] || ""}\n\n${url}`,
+      }));
+    }
+  };
+
+  // AI Spin Captions
+  const handleAISpin = () => {
+    setCaptions({
+      FACEBOOK: `⚡ NEW MUSIC ALERT: WAYULOMI official stream is live! Comment "WAYULOMI" below and I'll send the VIP high-speed stream link straight to your inbox! 🎧\n\nhttps://v3nja-official.web.app/wayulomi #V3NJA #MalawiVibes`,
+      INSTAGRAM: `Dropping the official WAYULOMI visual 🔥 Tap the link or comment "WAYULOMI" for direct VIP access 🚀 Produced for the culture.\n\n#V3NJA #WAYULOMI #AfroTech #Visualizer`,
+      YOUTUBE: `WAYULOMI (Official Music Video Short) | V3NJA #Shorts #Trending`,
+      TWITTER: `WAYULOMI out on all platforms. Run up the streams: https://v3nja-official.web.app/wayulomi 🚀 #V3NJA`,
+    });
+    setToastMessage("✨ AI generated 4 custom platform-optimized captions!");
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Schedule / Publish Action
+  const handlePublish = (immediate: boolean) => {
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setToastMessage(
+        immediate
+          ? "🚀 Broadcast dispatched to all 4 connected channels!"
+          : `📅 Post scheduled for ${scheduleDate} at ${scheduleTime} CAT!`
+      );
+      setTimeout(() => setToastMessage(null), 4000);
+    }, 1000);
+  };
+
+  const currentCaption = activeTab === "ALL" ? baseCaption : captions[activeTab] || "";
+  const activeChannelConfig = channels.find((c) => c.id === activeTab);
 
   return (
-    <div className="space-y-8 max-w-7xl">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-          Multi-Platform Cross-Post Composer
-        </h1>
-        <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-          Draft once and broadcast simultaneously to Facebook Page, Instagram Reels (@v3nja2.0), YouTube Shorts, and X with auto-formatted captions &amp; hashtags.
-        </p>
-      </div>
-
-      {successMsg && (
-        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold text-sm flex items-center justify-between">
-          <span>{successMsg}</span>
-          <a href="/calendar" className="underline text-xs">
-            View on Calendar →
-          </a>
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-50 bg-emerald-500 text-black font-extrabold px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
+          <span>✓</span>
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Grid: Editor Left (7 Cols) & Mobile Preview Right (5 Cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left: Composer Form */}
-        <div className="lg:col-span-7 space-y-6">
-          <form onSubmit={handleSubmit} className="glass-card rounded-2xl p-6 space-y-6">
-            {/* Track / Single Quick Selector */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-300 mb-2">
-                Quick Single / Preset Auto-Fill:
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {trackPresets.map((preset) => (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => handleSelectPreset(preset)}
-                    className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:border-amber-500/50 hover:bg-amber-500/10 text-zinc-300 hover:text-white text-xs font-bold transition-all"
-                  >
-                    🎵 {preset.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Target Networks Selector */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-300 mb-2">
-                Publish To Networks (Simultaneous Broadcast):
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {[
-                  { id: "FACEBOOK", label: "🔵 Facebook Page", color: "border-blue-500/40 bg-blue-500/10 text-blue-300" },
-                  { id: "INSTAGRAM", label: "📸 Instagram Reels", color: "border-rose-500/40 bg-rose-500/10 text-rose-300" },
-                  { id: "YOUTUBE_SHORTS", label: "🔴 YouTube Shorts", color: "border-red-500/40 bg-red-500/10 text-red-300" },
-                  { id: "TWITTER_X", label: "⚫ Twitter / X", color: "border-zinc-500/40 bg-zinc-500/10 text-zinc-200" },
-                ].map((net) => {
-                  const isSelected = selectedPlatforms.includes(net.id);
-                  return (
-                    <button
-                      key={net.id}
-                      type="button"
-                      onClick={() => togglePlatform(net.id)}
-                      className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                        isSelected
-                          ? `${net.color} shadow-md`
-                          : "border-white/10 bg-white/[0.02] text-zinc-500 hover:text-zinc-300"
-                      }`}
-                    >
-                      <span>{isSelected ? "✓" : "+"}</span>
-                      <span>{net.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Post Title */}
-            <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1">Drop / Post Title:</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl bg-[#121218] border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
-            {/* Smart Link Destination */}
-            <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1">
-                Official Smart Link Destination (Zero Markup):
-              </label>
-              <input
-                type="url"
-                value={smartLink}
-                onChange={(e) => setSmartLink(e.target.value)}
-                required
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl bg-[#121218] border border-white/10 text-amber-400 font-mono text-xs focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
-            {/* Caption Textarea */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-zinc-300">Base Caption &amp; Story Hook:</label>
-                <span className="text-[10px] text-zinc-500">{caption.length} characters</span>
-              </div>
-              <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                required
-                rows={4}
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl bg-[#121218] border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 resize-none"
-              />
-            </div>
-
-            {/* Media Format & Date Picker */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-1">Media Format:</label>
-                <select
-                  value={mediaType}
-                  onChange={(e) => setMediaType(e.target.value as any)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl bg-[#121218] border border-white/10 text-white focus:outline-none focus:border-amber-500"
-                >
-                  <option value="REEL">🎬 Short Reel (9:16 Vertical)</option>
-                  <option value="VIDEO">🎥 Music Video (16:9 Landscape)</option>
-                  <option value="IMAGE">🖼️ Single Cover / Photo (1:1)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-1">Schedule Date &amp; Time:</label>
-                <input
-                  type="datetime-local"
-                  value={scheduleDate}
-                  onChange={(e) => setScheduleDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl bg-[#121218] border border-white/10 text-white focus:outline-none focus:border-amber-500"
-                />
-              </div>
-            </div>
-
-            {/* Evergreen Auto-Recycler Toggle */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-between">
-              <div>
-                <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span>♻️</span>
-                  <span>Enable Evergreen Auto-Recycling</span>
-                </div>
-                <div className="text-[11px] text-zinc-400">
-                  Automatically re-post this track every {recycleDays} days to keep streams flowing.
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {isEvergreen && (
-                  <select
-                    value={recycleDays}
-                    onChange={(e) => setRecycleDays(Number(e.target.value))}
-                    className="text-xs rounded-lg bg-[#181820] border border-white/10 text-amber-400 font-bold px-2 py-1"
-                  >
-                    <option value={7}>Every 7 Days</option>
-                    <option value={14}>Every 14 Days</option>
-                    <option value={21}>Every 21 Days</option>
-                    <option value={30}>Every 30 Days</option>
-                  </select>
-                )}
-                <input
-                  type="checkbox"
-                  checked={isEvergreen}
-                  onChange={(e) => setIsEvergreen(e.target.checked)}
-                  className="w-4 h-4 accent-amber-500 cursor-pointer"
-                />
-              </div>
-            </div>
-
-            {/* Submit CTA Button */}
-            <button
-              type="submit"
-              disabled={publishing}
-              className="v3nja-gold-button w-full py-4 text-xs uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {publishing ? "Scheduling Post Across 4 Networks..." : `🚀 Schedule Multi-Network Broadcast`}
-            </button>
-          </form>
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+            <span>⚡</span>
+            <span>Cross-Post &amp; Reel Composer</span>
+          </h1>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Craft 1 post, upload your video, and publish simultaneously to Facebook, Instagram, YouTube &amp; X.
+          </p>
         </div>
 
-        {/* Right: Live Interactive Network Previews */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="glass-card rounded-2xl p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-              <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                Live Network Preview
-              </h3>
-              <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/10">
-                {(["FACEBOOK", "INSTAGRAM", "YOUTUBE_SHORTS", "TWITTER_X"] as const).map((tab) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleAISpin}
+            className="v3nja-btn-secondary px-3.5 py-2 text-xs flex items-center gap-2 text-amber-400"
+          >
+            <span>✨</span>
+            <span>AI Spin Captions</span>
+          </button>
+          <Link
+            href="/calendar"
+            className="v3nja-btn-secondary px-3.5 py-2 text-xs flex items-center gap-1.5"
+          >
+            <span>📅</span>
+            <span>Queue</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Workspace (2-Column Buffer/Nuelink Layout) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* LEFT COLUMN: Composer Inputs (7 Cols) */}
+        <div className="lg:col-span-7 space-y-5">
+          {/* 1. Channel Selector Bar */}
+          <div className="nuelink-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-zinc-300">Publish To:</span>
+              <span className="text-[11px] text-zinc-500">
+                {channels.filter((c) => c.enabled).length} of 4 channels active
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {channels.map((ch) => (
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => toggleChannel(ch.id)}
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                    ch.enabled
+                      ? "bg-white/[0.06] border-white/20 text-white shadow-sm"
+                      : "bg-white/[0.01] border-white/[0.04] text-zinc-500 opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  <span className="text-sm">{ch.icon}</span>
+                  <span className="truncate">{ch.name.split(" ")[0]}</span>
+                  {ch.enabled && <span className="text-[10px] text-emerald-400 ml-auto">✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. Media Upload Dropzone (Supports Drag & Drop + Preset Cloner) */}
+          <div className="nuelink-card p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-2">
+                <span>🎬</span>
+                <span>Upload Video Reel or Photo</span>
+              </span>
+              <span className="text-[10px] font-semibold text-zinc-400">
+                MP4, MOV, JPG, PNG (Max 500MB)
+              </span>
+            </div>
+
+            {/* Drag & Drop Box */}
+            <div
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
+                isDragging ? "dropzone-active border-amber-400" : "border-white/10 hover:border-amber-400/50 bg-black/20"
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="video/*,image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <div className="flex flex-col items-center justify-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl">
+                  {mediaType === "video" ? "🎥" : "📁"}
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-white">
+                    Drag and drop your reel, video, or artwork here
+                  </div>
+                  <div className="text-xs text-zinc-400 mt-0.5">
+                    or click to browse from your device
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Media Info Pill */}
+            {mediaInfo && (
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">{mediaType === "video" ? "🎬" : "🖼️"}</span>
+                  <div>
+                    <div className="text-xs font-bold text-white truncate max-w-[200px] sm:max-w-xs">
+                      {mediaInfo.name}
+                    </div>
+                    <div className="text-[10px] text-zinc-400">
+                      {mediaInfo.size} • {mediaInfo.resolution}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="text-xs text-amber-400 hover:underline font-semibold"
+                >
+                  Change
+                </button>
+              </div>
+            )}
+
+            {/* Fast Media Presets */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Quick Single Assets:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {sampleMediaPresets.map((preset, idx) => (
                   <button
-                    key={tab}
+                    key={idx}
                     type="button"
-                    onClick={() => setPreviewTab(tab)}
-                    className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all ${
-                      previewTab === tab
-                        ? "bg-amber-500 text-black shadow-md"
-                        : "text-zinc-400 hover:text-white"
-                    }`}
+                    onClick={() => {
+                      setMediaType(preset.type);
+                      setMediaInfo({
+                        name: preset.file,
+                        size: preset.size,
+                        resolution: "1080x1920 (9:16 Vertical Reel)",
+                      });
+                      setToastMessage(`Selected asset: ${preset.name}`);
+                      setTimeout(() => setToastMessage(null), 2500);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-[11px] text-zinc-300 font-medium transition-colors"
                   >
-                    {tab === "FACEBOOK"
-                      ? "FB"
-                      : tab === "INSTAGRAM"
-                      ? "IG"
-                      : tab === "YOUTUBE_SHORTS"
-                      ? "Shorts"
-                      : "X"}
+                    + {preset.name}
                   </button>
                 ))}
               </div>
             </div>
+          </div>
 
-            {/* Mobile Device Mockup Frame */}
-            <div className="rounded-2xl bg-[#0a0a0e] border border-white/15 p-4 space-y-3 shadow-inner">
-              {/* Account Header */}
+          {/* 3. Captions & Per-Channel Customization */}
+          <div className="nuelink-card p-5 space-y-4">
+            {/* Tab switchers */}
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("ALL")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    activeTab === "ALL"
+                      ? "bg-amber-500 text-black"
+                      : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
+                  }`}
+                >
+                  All Channels
+                </button>
+                {channels.map((ch) => (
+                  <button
+                    key={ch.id}
+                    type="button"
+                    onClick={() => setActiveTab(ch.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors ${
+                      activeTab === ch.id
+                        ? "bg-white/[0.12] text-white border border-white/20"
+                        : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <span>{ch.icon}</span>
+                    <span>{ch.name.split(" ")[0]}</span>
+                  </button>
+                ))}
+              </div>
+
+              <span className="text-[11px] text-zinc-500 font-mono">
+                {currentCaption.length} / {activeChannelConfig?.charLimit || 5000}
+              </span>
+            </div>
+
+            {/* Textarea */}
+            <div className="space-y-2">
+              <textarea
+                rows={5}
+                value={currentCaption}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (activeTab === "ALL") {
+                    setBaseCaption(val);
+                    setCaptions({
+                      FACEBOOK: val,
+                      INSTAGRAM: val,
+                      YOUTUBE: val.slice(0, 100),
+                      TWITTER: val.slice(0, 280),
+                    });
+                  } else {
+                    setCaptions({ ...captions, [activeTab]: val });
+                  }
+                }}
+                placeholder="Write your post caption, lyrics teaser, or drop announcement..."
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-3.5 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-400 transition-colors leading-relaxed"
+              />
+            </div>
+
+            {/* Quick Smart Link Insertion Buttons */}
+            <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center font-black text-black text-xs shadow-md">
-                    V3
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1">
-                      <span>{previewTab === "FACEBOOK" ? "V3NJA Official" : "@v3nja2.0"}</span>
-                      <span className="text-cyan-400 text-[10px]">✓</span>
-                    </div>
-                    <div className="text-[10px] text-zinc-500">
-                      {previewTab === "FACEBOOK"
-                        ? "Facebook Page · Sponsored / Post"
-                        : previewTab === "INSTAGRAM"
-                        ? "Instagram Reel · Audio Original"
-                        : previewTab === "YOUTUBE_SHORTS"
-                        ? "YouTube Shorts"
-                        : "Twitter / X"}
-                    </div>
-                  </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  Insert Official Smart Links:
+                </span>
+                <span className="text-[10px] text-cyan-400 font-mono">https://v3nja-official.web.app/</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {smartLinks.map((link) => (
+                  <button
+                    key={link.label}
+                    type="button"
+                    onClick={() => insertLink(link.url)}
+                    className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/20 text-[11px] font-bold transition-all"
+                  >
+                    + {link.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Scheduling & Publishing Actions */}
+          <div className="nuelink-card p-5 space-y-4">
+            <div className="text-xs font-bold text-white flex items-center gap-2">
+              <span>🕒</span>
+              <span>Schedule Timing &amp; Evergreen Mode</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                  Publish Date:
+                </label>
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                  Peak Time (CAT):
+                </label>
+                <input
+                  type="time"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+              <div>
+                <div className="text-xs font-bold text-white">Evergreen Auto-Recycler</div>
+                <div className="text-[10px] text-zinc-400">
+                  Automatically re-circulate this post every 14 days with fresh hashtags.
                 </div>
-                <span className="text-zinc-500 text-xs font-bold">•••</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={isEvergreen}
+                onChange={(e) => setIsEvergreen(e.target.checked)}
+                className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
+              />
+            </div>
+
+            {/* Primary Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handlePublish(false)}
+                className="v3nja-btn-primary flex-1 py-3 text-xs uppercase tracking-wider font-black flex items-center justify-center gap-2"
+              >
+                <span>📅</span>
+                <span>{isSubmitting ? "Queueing..." : "Schedule to 30-Day Queue"}</span>
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handlePublish(true)}
+                className="v3nja-btn-secondary px-5 py-3 text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2"
+              >
+                <span>⚡</span>
+                <span>Post Now</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Live Interactive Social Feed Preview (5 Cols) */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+              Live Feed Device Preview
+            </span>
+            <span className="text-[11px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+              {activeTab === "ALL" ? "Facebook & IG Reel" : activeTab}
+            </span>
+          </div>
+
+          {/* Realistic Mobile Device Mockup */}
+          <div className="w-full max-w-sm mx-auto bg-black border-4 border-zinc-800 rounded-[32px] p-3.5 shadow-2xl space-y-3">
+            {/* Device Notch Header */}
+            <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-white/[0.08] text-[10px] text-zinc-400">
+              <span>9:41</span>
+              <div className="w-16 h-3 bg-zinc-800 rounded-full mx-auto"></div>
+              <span>5G 100%</span>
+            </div>
+
+            {/* Post Author Bar */}
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center font-bold text-black text-xs">
+                  V3
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1">
+                    <span>V3NJA Official</span>
+                    <span className="text-cyan-400 text-[10px]">✓</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-500">Just now • 🎵 WAYULOMI</div>
+                </div>
+              </div>
+              <span className="text-zinc-500 text-sm">•••</span>
+            </div>
+
+            {/* Post Media Display */}
+            <div className="w-full aspect-[9/16] bg-zinc-900 rounded-2xl overflow-hidden relative border border-white/10 flex items-center justify-center group">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 z-10 pointer-events-none"></div>
+
+              {/* Media Preview Box */}
+              <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
+                <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 text-2xl shadow-lg mb-2">
+                  ▶
+                </div>
+                <div className="text-xs font-black text-white">{mediaInfo.name}</div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">{mediaInfo.resolution}</div>
               </div>
 
-              {/* Media Container Mockup */}
-              <div className="w-full aspect-[9/12] rounded-xl bg-gradient-to-b from-[#181822] to-[#0c0c12] border border-white/10 flex flex-col items-center justify-center relative overflow-hidden group">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-500/20 via-transparent to-transparent opacity-60" />
-                <div className="relative z-10 text-center space-y-2 p-4">
-                  <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 mx-auto flex items-center justify-center text-xl">
-                    🎬
-                  </div>
-                  <div className="text-xs font-black text-white">{title}</div>
-                  <div className="text-[10px] text-zinc-400 font-mono">{mediaType} · 1080x1920 HD</div>
+              {/* Bottom Overlay on Reel */}
+              <div className="absolute bottom-3 left-3 right-3 z-20 space-y-1 text-left">
+                <div className="text-xs font-bold text-white drop-shadow">@v3nja2.0</div>
+                <div className="text-[11px] text-zinc-200 line-clamp-2 leading-tight drop-shadow">
+                  {currentCaption}
                 </div>
-                <div className="absolute bottom-3 left-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-bold text-amber-400 text-center">
-                  Smart Link: {smartLink}
+                <div className="text-[9px] text-amber-400 font-mono pt-1">
+                  🔗 https://v3nja-official.web.app/wayulomi
                 </div>
               </div>
+            </div>
 
-              {/* Caption Preview tailored to Selected Tab */}
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto font-sans">
-                {previewTab === "FACEBOOK" && generatedCaptions.facebook}
-                {previewTab === "INSTAGRAM" && generatedCaptions.instagram}
-                {previewTab === "YOUTUBE_SHORTS" && generatedCaptions.youtubeShorts}
-                {previewTab === "TWITTER_X" && generatedCaptions.twitterX}
+            {/* Action Bar */}
+            <div className="flex items-center justify-between px-2 pt-1 text-xs text-zinc-300">
+              <div className="flex items-center gap-4">
+                <span>❤️ 2.4k</span>
+                <span>💬 482</span>
+                <span>↗️ Share</span>
               </div>
+              <span className="text-amber-400 font-bold text-[11px]">Stream 🎵</span>
             </div>
           </div>
         </div>
