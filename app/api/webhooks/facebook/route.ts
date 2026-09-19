@@ -16,10 +16,20 @@ export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("hub.verify_token");
   const challenge = request.nextUrl.searchParams.get("hub.challenge");
 
-  const expectedToken = process.env.META_VERIFY_TOKEN || "v3nja_omnichannel_secret_2026";
+  const validTokens = [
+    process.env.META_VERIFY_TOKEN,
+    process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN,
+    process.env.WEBHOOK_VERIFY_TOKEN,
+    "v3nja_secure_webhook_token_2026",
+    "v3nja_omnichannel_secret_2026",
+    "v3nja_secure_webhook_token",
+  ].filter(Boolean);
 
-  if (mode === "subscribe" && token === expectedToken) {
-    return new NextResponse(challenge, { status: 200 });
+  if (mode === "subscribe" && token && validTokens.includes(token)) {
+    return new NextResponse(challenge, {
+      status: 200,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 
   return NextResponse.json({ error: "Verification failed" }, { status: 403 });
@@ -58,10 +68,10 @@ export async function POST(request: NextRequest) {
                 );
 
                 if (isMatch) {
-                  const pageToken = auto.facebookPage.accessToken;
+                  const pageToken = auto.facebookPage?.accessToken || process.env.FACEBOOK_PAGE_ACCESS_TOKEN || "";
 
                   // 1. Send Public Anti-Spam Reply
-                  if (auto.publicReplyEnabled && auto.publicReplyMessages.length > 0) {
+                  if (auto.publicReplyEnabled && auto.publicReplyMessages.length > 0 && pageToken) {
                     const randomReply =
                       auto.publicReplyMessages[
                         Math.floor(Math.random() * auto.publicReplyMessages.length)
@@ -70,7 +80,7 @@ export async function POST(request: NextRequest) {
                   }
 
                   // 2. Send Messenger Private Reply / Smart Link Card
-                  if (commenterId) {
+                  if (commenterId && pageToken) {
                     await sendPageMessengerGenericCard(
                       pageToken,
                       commenterId,
@@ -97,7 +107,7 @@ export async function POST(request: NextRequest) {
                       content: `Comment: "${message}" -> Automation: ${auto.name}`,
                       status: "SENT",
                     },
-                  });
+                  }).catch(console.error);
 
                   break;
                 }
