@@ -22,16 +22,17 @@ function ChannelsContent() {
   ]);
 
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [showMetaHelp, setShowMetaHelp] = useState(false);
   const [fbPageId, setFbPageId] = useState("");
   const [fbPageToken, setFbPageToken] = useState("");
   const [fbPageName, setFbPageName] = useState("V3NJA Official Facebook Page");
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
 
   useEffect(() => {
     fetchChannels();
 
-    // Check OAuth return params
     const status = searchParams.get("status");
     const err = searchParams.get("error");
     const info = searchParams.get("info");
@@ -64,6 +65,12 @@ function ChannelsContent() {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(label);
+    setTimeout(() => setCopiedText(null), 2500);
   };
 
   const handleManualFacebookConnect = async (e: React.FormEvent) => {
@@ -117,14 +124,88 @@ function ChannelsContent() {
           </p>
         </div>
 
-        <button
-          onClick={fetchChannels}
-          className="v3nja-btn-secondary px-3.5 py-2 text-xs flex items-center gap-2 self-start"
-        >
-          <span>🔄</span>
-          <span>Refresh Live Status</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMetaHelp(!showMetaHelp)}
+            className="v3nja-btn-secondary px-3.5 py-2 text-xs flex items-center gap-2 text-cyan-400 border-cyan-500/30"
+          >
+            <span>💡</span>
+            <span>Meta App Domain Fix Guide</span>
+          </button>
+          <button
+            onClick={fetchChannels}
+            className="v3nja-btn-secondary px-3.5 py-2 text-xs flex items-center gap-2"
+          >
+            <span>🔄</span>
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
+
+      {/* Meta App Domain Helper Box */}
+      {showMetaHelp && (
+        <div className="nuelink-card p-5 space-y-4 border-cyan-500/40 bg-cyan-500/[0.03]">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-bold text-white flex items-center gap-2">
+              <span>🔵</span>
+              <span>How to fix &quot;Can&apos;t load URL / App Domain&quot; in Meta Dashboard (60 Seconds)</span>
+            </div>
+            <button onClick={() => setShowMetaHelp(false)} className="text-zinc-400 hover:text-white text-xs">✕ Close</button>
+          </div>
+
+          <p className="text-xs text-zinc-300">
+            Meta requires your live Vercel domain to be added to your App Settings before it allows 1-click login:
+          </p>
+
+          <div className="space-y-3 bg-black/40 p-4 rounded-xl border border-white/10 text-xs">
+            <div className="space-y-1">
+              <div className="font-bold text-zinc-300">1. Open Your Meta App Settings:</div>
+              <a
+                href="https://developers.facebook.com/apps/4125567664406392/settings/basic/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-cyan-400 hover:underline inline-block font-mono"
+              >
+                https://developers.facebook.com/apps/4125567664406392/settings/basic/ ↗
+              </a>
+            </div>
+
+            <div className="space-y-1">
+              <div className="font-bold text-zinc-300">2. In &quot;App Domains&quot;, add this domain:</div>
+              <div className="flex items-center gap-2">
+                <code className="bg-zinc-800 text-amber-400 px-2.5 py-1 rounded font-mono text-xs select-all">
+                  v3nja-omnichannel.vercel.app
+                </code>
+                <button
+                  onClick={() => copyToClipboard("v3nja-omnichannel.vercel.app", "domain")}
+                  className="px-2 py-1 bg-white/[0.08] hover:bg-white/[0.15] text-zinc-200 rounded text-[10px] font-bold"
+                >
+                  {copiedText === "domain" ? "✓ Copied!" : "Copy Domain"}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="font-bold text-zinc-300">3. In &quot;Valid OAuth Redirect URIs&quot; (under Facebook Login ➔ Settings), add:</div>
+              <div className="flex items-center gap-2">
+                <code className="bg-zinc-800 text-amber-400 px-2.5 py-1 rounded font-mono text-xs select-all break-all">
+                  https://v3nja-omnichannel.vercel.app/api/auth/facebook/callback
+                </code>
+                <button
+                  onClick={() => copyToClipboard("https://v3nja-omnichannel.vercel.app/api/auth/facebook/callback", "uri")}
+                  className="px-2 py-1 bg-white/[0.08] hover:bg-white/[0.15] text-zinc-200 rounded text-[10px] font-bold shrink-0"
+                >
+                  {copiedText === "uri" ? "✓ Copied!" : "Copy URI"}
+                </button>
+              </div>
+            </div>
+
+            <div className="text-zinc-400 pt-1">
+              4. Click <strong className="text-white">Save Changes</strong> at the bottom of Meta Dashboard. Then click the 1-click button below again!
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Status Notification */}
       {statusMsg && (
@@ -253,11 +334,11 @@ function ChannelsContent() {
                     : "bg-zinc-800 text-zinc-400 border-zinc-700"
                 }`}
               >
-                ● {channels.find((c) => c.id === "YOUTUBE")?.isConnected ? "CONNECTED" : "DISCONNECTED"}
+                ● {channels.find((c) => c.id === "YOUTUBE")?.isConnected ? "CONNECTED" : "SETUP NEEDED"}
               </span>
             </div>
             <p className="text-xs text-zinc-400">
-              Upload 1080x1920 HD vertical music shorts automatically with tailored tags.
+              Upload 1080x1920 HD vertical music shorts automatically with tailored tags. Requires Free Google Cloud Client ID.
             </p>
           </div>
 
@@ -293,11 +374,11 @@ function ChannelsContent() {
                     : "bg-zinc-800 text-zinc-400 border-zinc-700"
                 }`}
               >
-                ● {channels.find((c) => c.id === "TWITTER")?.isConnected ? "CONNECTED" : "DISCONNECTED"}
+                ● {channels.find((c) => c.id === "TWITTER")?.isConnected ? "CONNECTED" : "SETUP NEEDED"}
               </span>
             </div>
             <p className="text-xs text-zinc-400">
-              Broadcast concise 280-character teasers and smart links to your X followers.
+              Broadcast concise 280-character teasers and smart links. Requires Free Twitter Developer Client ID.
             </p>
           </div>
 
