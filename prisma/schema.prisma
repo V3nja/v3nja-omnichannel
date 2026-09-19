@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model FacebookPage {
+  id            String           @id @default(cuid())
+  pageId        String           @unique
+  name          String
+  category      String?
+  accessToken   String
+  avatarUrl     String?
+  followers     Int              @default(0)
+  isConnected   Boolean          @default(true)
+  automations   PageAutomation[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model PageAutomation {
+  id                    String        @id @default(cuid())
+  facebookPageId        String
+  facebookPage          FacebookPage  @relation(fields: [facebookPageId], references: [id], onDelete: Cascade)
+  name                  String
+  goal                  String?
+  keywords              String[]      @default(["MUSIC"])
+  matchAnyPost          Boolean       @default(true)
+  postId                String?
+  publicReplyEnabled    Boolean       @default(true)
+  publicReplyMessages   String[]      @default(["Thank you so much! Sent you the VIP link in Messenger ❤️"])
+  messengerMessage      String        @default("✨ Thank you for connecting! Here is the official VIP link:")
+  linkUrl               String        @default("https://v3nja-official.web.app/")
+  linkButtonLabel       String        @default("Stream Track 🎧")
+  requireLikeFollow     Boolean       @default(true)
+  followPromptMessage   String?       @default("Please Like & Follow our Facebook Page, then tap below to unlock the link! ✨")
+  followPromptButtonLabel String?     @default("I Follow V3NJA ✅")
+  followUpEnabled       Boolean       @default(true)
+  followUpMessage       String?       @default("Hey! Thank you again for listening. Hope you enjoyed the music! Blessings ✨")
+  followUpDelayMinutes  Int           @default(20)
+  isActive              Boolean       @default(true)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+}
+
+model ScheduledPost {
+  id                    String              @id @default(cuid())
+  title                 String
+  caption               String
+  mediaUrl              String?
+  mediaType             String              @default("VIDEO") // VIDEO, REEL, IMAGE, CAROUSEL
+  scheduledFor          DateTime
+  status                String              @default("SCHEDULED") // DRAFT, SCHEDULED, PUBLISHING, PUBLISHED, FAILED
+  platforms             String[]            @default(["FACEBOOK", "INSTAGRAM", "YOUTUBE_SHORTS", "TWITTER_X"])
+  isEvergreen           Boolean             @default(false)
+  recycleIntervalDays   Int?                @default(14)
+  lastPostedAt          DateTime?
+  crossPostTargets      CrossPostTarget[]
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+}
+
+model CrossPostTarget {
+  id              String        @id @default(cuid())
+  scheduledPostId String
+  scheduledPost   ScheduledPost @relation(fields: [scheduledPostId], references: [id], onDelete: Cascade)
+  platform        String        // FACEBOOK, INSTAGRAM, YOUTUBE_SHORTS, TWITTER_X
+  status          String        @default("PENDING") // PENDING, SUCCESS, FAILED
+  externalPostId  String?
+  errorMessage    String?
+  publishedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model BroadcastLog {
+  id              String    @id @default(cuid())
+  type            String    // FB_COMMENT_REPLY, MESSENGER_DM, CROSSPOST_BROADCAST, FOLLOW_GATE_CHECK
+  platform        String    // FACEBOOK, INSTAGRAM, YOUTUBE, TWITTER
+  triggerUser     String?
+  content         String
+  status          String    // SENT, FAILED, SCHEDULED, SKIPPED
+  responseId      String?
+  errorMessage    String?
+  createdAt       DateTime  @default(now())
+}
