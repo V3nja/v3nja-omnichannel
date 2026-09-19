@@ -13,15 +13,14 @@ export async function GET(request: NextRequest) {
   const protocol = host.includes("localhost") ? "http" : "https";
   const redirectUri = `${protocol}://${host}/api/auth/facebook/callback`;
 
-  // Meta OAuth Scopes for Pages and Instagram Publishing
+  // Standard valid Meta OAuth scopes for Facebook Page management, comment replies, and Messenger DMs
   const scopes = [
     "pages_show_list",
     "pages_read_engagement",
-    "pages_manage_posts",
     "pages_messaging",
-    "instagram_basic",
-    "instagram_content_publish",
+    "pages_manage_engagement",
     "public_profile",
+    "instagram_basic",
   ].join(",");
 
   const state = Math.random().toString(36).substring(7);
