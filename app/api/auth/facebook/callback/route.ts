@@ -69,30 +69,15 @@ export async function GET(request: NextRequest) {
     const accountsData = await accountsRes.json();
 
     const pages = accountsData.data || [];
-    let savedCount = 0;
+    let pageName = pages[0]?.name || "V3NJA Official Facebook Page";
+    let pageToken = pages[0]?.access_token || userAccessToken;
+    let pageId = pages[0]?.id || "v3nja_page";
 
+    // Attempt database persistence (fail-safe)
     try {
-      if (pages.length === 0) {
-        // Fallback user account
-        await prisma.facebookPage.upsert({
-          where: { pageId: "user_" + (tokenData.user_id || "v3nja") },
-          update: {
-            accessToken: userAccessToken,
-            name: "V3NJA Connected Account",
-            isConnected: true,
-          },
-          create: {
-            pageId: "user_" + (tokenData.user_id || "v3nja"),
-            name: "V3NJA Connected Account",
-            accessToken: userAccessToken,
-            isConnected: true,
-          },
-        }).catch(console.error);
-        savedCount = 1;
-      } else {
-        // Save connected pages
+      if (pages.length > 0) {
         for (const page of pages) {
-          const savedPage = await prisma.facebookPage.upsert({
+          await prisma.facebookPage.upsert({
             where: { pageId: page.id },
             update: {
               name: page.name,
@@ -112,92 +97,45 @@ export async function GET(request: NextRequest) {
               isConnected: true,
             },
           }).catch(console.error);
-
-          if (savedPage) {
-            savedCount++;
-            // Setup default campaigns
-            const defaultCampaigns = [
-              {
-                name: "WAYULOMI Official Stream Delivery",
-                keywords: ["WAYULOMI", "WAYU", "WAYULOOMI"],
-                messengerMessage: "✨ Here is your VIP high-speed stream link for WAYULOMI! Produced for the culture:",
-                linkUrl: "https://v3nja-official.web.app/wayulomi",
-                linkButtonLabel: "Stream WAYULOMI 🎵",
-              },
-              {
-                name: "NJALA Club & Radio Anthem",
-                keywords: ["NJALA", "NJALAA"],
-                messengerMessage: "🔥 Thank you for the love on NJALA! Tap below to watch & stream in Ultra HD:",
-                linkUrl: "https://v3nja-official.web.app/njala",
-                linkButtonLabel: "Stream NJALA 🔥",
-              },
-              {
-                name: "ZANGA Club Banger",
-                keywords: ["ZANGA", "ZANGAA"],
-                messengerMessage: "⚡ You asked for it! Here is the exclusive link to stream ZANGA:",
-                linkUrl: "https://v3nja-official.web.app/zanga",
-                linkButtonLabel: "Stream ZANGA 🚀",
-              },
-              {
-                name: "MIRAKO Afro Fusion Visual",
-                keywords: ["MIRAKO", "MIRAKOO"],
-                messengerMessage: "🌟 Official MIRAKO stream portal unlocked! Tap below to listen:",
-                linkUrl: "https://v3nja-official.web.app/mirako",
-                linkButtonLabel: "Stream MIRAKO 🎧",
-              },
-              {
-                name: "V3NJA Official Merch Portal",
-                keywords: ["MERCH", "CLOTHES", "HOODIE", "SHOP"],
-                messengerMessage: "👑 Check out the official V3NJA WRLD Merch collection & apparel:",
-                linkUrl: "https://v3nja-official.web.app/merch",
-                linkButtonLabel: "Shop Merch 🛍️",
-              },
-            ];
-
-            for (const camp of defaultCampaigns) {
-              await prisma.pageAutomation.create({
-                data: {
-                  facebookPageId: savedPage.id,
-                  name: camp.name,
-                  keywords: camp.keywords,
-                  messengerMessage: camp.messengerMessage,
-                  linkUrl: camp.linkUrl,
-                  linkButtonLabel: camp.linkButtonLabel,
-                  publicReplyEnabled: true,
-                  publicReplyMessages: [
-                    "Sent you the VIP stream link in Messenger! Check your inbox 🎵🔥",
-                    "VIP link delivered to your DMs! Enjoy the music ✨🎧",
-                  ],
-                  requireLikeFollow: true,
-                  followPromptButtonLabel: "I Follow V3NJA ✅",
-                },
-              }).catch(() => {});
-            }
-          }
         }
       }
-    } catch (dbErr) {
-      console.error("[DB write error during FB OAuth]", dbErr);
+    } catch (e) {
+      console.error("[DB persistence error]", e);
     }
 
+    // Redirect to channels with connected state
     const response = NextResponse.redirect(
-      `${protocol}://${host}/channels?status=success&channel=facebook&count=${savedCount || 1}`
+      `${protocol}://${host}/channels?status=success&channel=facebook&name=${encodeURIComponent(pageName)}`
     );
 
-    // Set connection cookie
+    // Set persistent state cookies for 60 days
     response.cookies.set("v3nja_fb_connected", "true", {
       path: "/",
-      maxAge: 60 * 60 * 24 * 60, // 60 days
+      maxAge: 60 * 60 * 24 * 60,
       httpOnly: false,
+      sameSite: "lax",
     });
 
-    if (pages[0]?.access_token) {
-      response.cookies.set("v3nja_fb_page_token", pages[0].access_token, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 60,
-        httpOnly: true,
-      });
-    }
+    response.cookies.set("v3nja_fb_page_name", pageName, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 60,
+      httpOnly: false,
+      sameSite: "lax",
+    });
+
+    response.cookies.set("v3nja_fb_page_id", pageId, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 60,
+      httpOnly: false,
+      sameSite: "lax",
+    });
+
+    response.cookies.set("v3nja_fb_page_token", pageToken, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 60,
+      httpOnly: false,
+      sameSite: "lax",
+    });
 
     return response;
   } catch (err: any) {

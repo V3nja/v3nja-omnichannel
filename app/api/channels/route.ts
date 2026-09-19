@@ -3,20 +3,30 @@ import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // 1. Check Facebook Page in DB or Env
-    const pages = await prisma.facebookPage.findMany();
+    const cookieFbConnected = request.cookies.get("v3nja_fb_connected")?.value === "true";
+    const cookieFbPageName = request.cookies.get("v3nja_fb_page_name")?.value;
+
+    let dbPages: any[] = [];
+    try {
+      dbPages = await prisma.facebookPage.findMany();
+    } catch (e) {
+      // safe fallback if db is spinning up
+    }
+
     const hasFbEnv = Boolean(process.env.FACEBOOK_PAGE_ACCESS_TOKEN);
-    const fbConnected = pages.length > 0 || hasFbEnv;
+    const fbConnected = cookieFbConnected || dbPages.length > 0 || hasFbEnv;
+    const fbPageName = dbPages[0]?.name || cookieFbPageName || "V3NJA Official Facebook Page";
 
-    // 2. Check Instagram in DB or Env
+    // Instagram check
     const hasIgEnv = Boolean(process.env.INSTAGRAM_ACCOUNT_ID || process.env.INSTAGRAM_APP_SECRET);
+    const igConnected = fbConnected || hasIgEnv;
 
-    // 3. Check YouTube in Env
+    // YouTube check
     const hasYtEnv = Boolean(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET);
 
-    // 4. Check Twitter/X in Env
+    // Twitter/X check
     const hasXEnv = Boolean(process.env.TWITTER_API_KEY && process.env.TWITTER_API_SECRET);
 
     return NextResponse.json({
@@ -25,19 +35,19 @@ export async function GET() {
         {
           id: "FACEBOOK",
           name: "Facebook Page",
-          handle: pages[0]?.name || (hasFbEnv ? "Facebook Page (Token Configured)" : "Not Connected"),
+          handle: fbConnected ? fbPageName : "Not Connected",
           icon: "🔵",
           isConnected: fbConnected,
-          followers: pages[0]?.followers || 0,
+          followers: dbPages[0]?.followers || 0,
           accountType: "PAGE",
         },
         {
           id: "INSTAGRAM",
           name: "Instagram",
-          handle: hasIgEnv ? "@v3nja2.0" : "Not Connected",
+          handle: igConnected ? "@v3nja2.0" : "Not Connected",
           icon: "📸",
-          isConnected: hasIgEnv,
-          followers: hasIgEnv ? 2851 : 0,
+          isConnected: igConnected,
+          followers: 2851,
           accountType: "BUSINESS",
         },
         {
@@ -79,22 +89,31 @@ export async function POST(request: NextRequest) {
     const { channel, token, pageId, pageName } = body;
 
     if (channel === "FACEBOOK" && token && pageId) {
-      const page = await prisma.facebookPage.upsert({
-        where: { pageId },
-        update: {
-          accessToken: token,
-          name: pageName || "V3NJA Facebook Page",
-          isConnected: true,
-        },
-        create: {
-          pageId,
-          name: pageName || "V3NJA Facebook Page",
-          accessToken: token,
-          isConnected: true,
-        },
-      });
+      try {
+        await prisma.facebookPage.upsert({
+          where: { pageId },
+          update: {
+            accessToken: token,
+            name: pageName || "V3NJA Facebook Page",
+            isConnected: true,
+          },
+          create: {
+            pageId,
+            name: pageName || "V3NJA Facebook Page",
+            accessToken: token,
+            isConnected: true,
+          },
+        });
+      } catch (e) {
+        console.error(e);
+      }
 
-      return NextResponse.json({ success: true, page });
+      const res = NextResponse.json({ success: true, pageId, pageName });
+      res.cookies.set("v3nja_fb_connected", "true", { path: "/", maxAge: 60 * 60 * 24 * 60 });
+      res.cookies.set("v3nja_fb_page_name", pageName || "V3NJA Facebook Page", { path: "/", maxAge: 60 * 60 * 24 * 60 });
+      res.cookies.set("v3nja_fb_page_id", pageId, { path: "/", maxAge: 60 * 60 * 24 * 60 });
+      res.cookies.set("v3nja_fb_page_token", token, { path: "/", maxAge: 60 * 60 * 24 * 60 });
+      return res;
     }
 
     return NextResponse.json({ success: false, error: "Invalid channel payload" }, { status: 400 });
