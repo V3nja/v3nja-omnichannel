@@ -1,25 +1,34 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "V3NJA · Omnichannel Social Management & Automation Suite",
-  description:
-    "Buffer & Nuelink-style multi-platform social publisher, reel scheduler, and Facebook Page Messenger DM automation engine for V3NJA.",
-};
+import { usePathname } from "next/navigation";
+import "./globals.css";
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const [channelCounts, setChannelCounts] = useState({ connected: 0, total: 4 });
+
+  useEffect(() => {
+    fetch("/api/channels")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.channels) {
+          const connected = data.channels.filter((c: any) => c.isConnected).length;
+          setChannelCounts({ connected, total: data.channels.length });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <html lang="en" className="dark h-full bg-[#09090b]">
-      <body className={`${inter.className} h-full text-zinc-100 flex flex-col md:flex-row overflow-hidden`}>
-        {/* Left Sidebar (Buffer / Nuelink Style) */}
+      <body className="h-full text-zinc-100 flex flex-col md:flex-row overflow-hidden antialiased">
+        {/* Left Sidebar (Buffer / Verlynk Style) */}
         <aside className="w-full md:w-64 lg:w-72 bg-[#0d0d12] border-b md:border-b-0 md:border-r border-white/[0.08] flex flex-col justify-between shrink-0 z-40">
           {/* Brand & Channels */}
           <div className="p-4 sm:p-5 space-y-6">
@@ -49,41 +58,22 @@ export default function RootLayout({
               <span>New Cross-Post</span>
             </Link>
 
-            {/* Connected Channels List */}
+            {/* Connected Channels Summary */}
             <div className="space-y-1.5">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-2">
-                Connected Channels (4)
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-2">
+                <span>Channels</span>
+                <span className="text-amber-400">{channelCounts.connected} / {channelCounts.total} Connected</span>
               </div>
-              <div className="space-y-1 bg-white/[0.02] p-2 rounded-xl border border-white/[0.06]">
-                <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-white/[0.04] text-zinc-200 font-medium">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    <span>Facebook Page</span>
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-bold">Connected</span>
+              <Link
+                href="/channels"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] text-xs font-semibold text-zinc-300 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">🔗</span>
+                  <span>Connect / Manage Accounts</span>
                 </div>
-                <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg text-zinc-300 font-medium">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                    <span>@v3nja2.0 (IG)</span>
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-bold">Connected</span>
-                </div>
-                <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg text-zinc-300 font-medium">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                    <span>YouTube Shorts</span>
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-bold">Connected</span>
-                </div>
-                <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg text-zinc-300 font-medium">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-zinc-400"></span>
-                    <span>X (Twitter)</span>
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-bold">Connected</span>
-                </div>
-              </div>
+                <span className="text-[10px] text-amber-400 font-bold">Configure →</span>
+              </Link>
             </div>
 
             {/* Main Navigation */}
@@ -93,57 +83,85 @@ export default function RootLayout({
               </div>
               <Link
                 href="/"
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname === "/"
+                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                    : "text-zinc-300 hover:text-white hover:bg-white/[0.05]"
+                }`}
               >
                 <span className="text-sm">🎛️</span>
                 <span>Dashboard Hub</span>
               </Link>
               <Link
                 href="/composer"
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20"
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname === "/composer"
+                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                    : "text-zinc-300 hover:text-white hover:bg-white/[0.05]"
+                }`}
               >
                 <span className="text-sm">⚡</span>
                 <span>Cross-Post Composer</span>
               </Link>
               <Link
                 href="/calendar"
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname === "/calendar"
+                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                    : "text-zinc-300 hover:text-white hover:bg-white/[0.05]"
+                }`}
               >
                 <span className="text-sm">📅</span>
                 <span>Content Calendar</span>
               </Link>
               <Link
                 href="/media"
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname === "/media"
+                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                    : "text-zinc-300 hover:text-white hover:bg-white/[0.05]"
+                }`}
               >
                 <span className="text-sm">🎬</span>
                 <span>Media &amp; Reel Assets</span>
               </Link>
               <Link
                 href="/facebook-automations"
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname === "/facebook-automations"
+                    ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                    : "text-zinc-300 hover:text-white hover:bg-white/[0.05]"
+                }`}
               >
                 <span className="text-sm">🔵</span>
                 <span>FB Page Automations</span>
               </Link>
               <Link
                 href="/evergreen"
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname === "/evergreen"
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    : "text-zinc-300 hover:text-white hover:bg-white/[0.05]"
+                }`}
               >
                 <span className="text-sm">♻️</span>
                 <span>Evergreen Recycler</span>
               </Link>
               <Link
                 href="/logs"
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname === "/logs"
+                    ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                    : "text-zinc-300 hover:text-white hover:bg-white/[0.05]"
+                }`}
               >
                 <span className="text-sm">📡</span>
-                <span>Publishing &amp; DM Logs</span>
+                <span>Publishing Logs</span>
               </Link>
             </nav>
           </div>
 
-          {/* Bottom Free Tier Status */}
+          {/* Bottom Info */}
           <div className="p-4 border-t border-white/[0.08] bg-black/30 space-y-2">
             <div className="flex items-center justify-between text-[11px] text-zinc-400">
               <span className="flex items-center gap-1.5 font-medium">
@@ -153,7 +171,7 @@ export default function RootLayout({
               <span className="font-bold text-emerald-400">$0 / mo</span>
             </div>
             <div className="text-[10px] text-zinc-500">
-              Smart Links ➔ <span className="text-cyan-400 font-mono">v3nja-official.web.app</span>
+              Destination ➔ <span className="text-cyan-400 font-mono">v3nja-official.web.app</span>
             </div>
           </div>
         </aside>
