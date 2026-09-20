@@ -3,85 +3,100 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #09090b;
-  --bg-secondary: #111115;
-  --bg-tertiary: #18181f;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --gold-primary: #f59e0b;
-  --gold-glow: rgba(245, 158, 11, 0.25);
-  --cyan-glow: rgba(6, 182, 212, 0.25);
-  --purple-glow: rgba(168, 85, 247, 0.25);
+  --bg-app: #08090d;
+  --bg-sidebar: #0d0e15;
+  --bg-card: #13141e;
+  --bg-card-hover: #181926;
+  --bg-input: #0a0b10;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-active: rgba(245, 158, 11, 0.4);
+  --accent-amber: #f59e0b;
+  --accent-cyan: #06b6d4;
+  --accent-rose: #f43f5e;
+  --accent-purple: #a855f7;
+  --accent-emerald: #10b981;
 }
 
 body {
-  background-color: var(--bg-primary);
-  color: #f4f4f5;
+  background-color: var(--bg-app);
+  color: #f3f4f6;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  overflow-x: hidden;
 }
 
-/* Custom Scrollbar */
+/* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0d0d11;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 9999px;
+  background: #232433;
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: #37384e;
 }
 
-/* Modern Buffer/Nuelink Card Styles */
-.nuelink-card {
-  background: #111116;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+/* Verlynk / Buffer Inspired SaaS Cards */
+.saas-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.nuelink-card:hover {
+.saas-card:hover {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
-.nuelink-card-active {
-  background: #14141c;
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.08);
+.saas-card-active {
+  background: #171824;
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.08);
 }
 
-/* High-contrast Gold Action Button */
-.v3nja-btn-primary {
+/* Buttons */
+.btn-gold {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #000000;
   font-weight: 800;
-  border-radius: 12px;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
-  transition: all 0.2s ease;
-}
-.v3nja-btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-}
-
-.v3nja-btn-secondary {
-  background: #1a1a24;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #f4f4f5;
-  font-weight: 600;
-  border-radius: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.25);
   transition: all 0.15s ease;
 }
-.v3nja-btn-secondary:hover {
-  background: #222230;
-  border-color: rgba(255, 255, 255, 0.2);
+.btn-gold:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
 }
 
-/* Drag and Drop Uploader Glow */
+.btn-secondary {
+  background: #181924;
+  border: 1px solid var(--border-subtle);
+  color: #e2e8f0;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+}
+.btn-secondary:hover {
+  background: #202230;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+/* Dropzone Active */
 .dropzone-active {
   border-color: #f59e0b !important;
-  background: rgba(245, 158, 11, 0.04) !important;
+  background: rgba(245, 158, 11, 0.05) !important;
+}
+
+/* Micro Badges */
+.badge-network {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
 }
